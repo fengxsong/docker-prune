@@ -1,0 +1,35 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    app: docker-prune
+  name: docker-prune
+  namespace: kube-system
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: docker-prune
+  template:
+    metadata:
+      labels:
+        app: docker-prune
+    spec:
+      containers:
+        - command:
+            - /usr/local/bin/docker-prune
+            - --all
+          image: fengxsong/docker-prune:v0.0.1
+          imagePullPolicy: IfNotPresent
+          name: docker-prune
+          volumeMounts:
+            - mountPath: /var/run/docker.sock
+              name: dockersock
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      volumes:
+        - hostPath:
+            path: /var/run/docker.sock
+          name: dockersock
