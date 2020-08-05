@@ -34,37 +34,15 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to create Docker client: %v", err)
 	}
-
-	ticker := time.NewTicker(*intervalF)
-	defer func() {
-		ticker.Stop()
-		cli.Close()
-	}()
-
-	queue := make(chan struct{}, 1)
-	queue <- struct{}{}
-
 	for {
 		select {
-		case <-ticker.C:
-			queue <- struct{}{}
-		case <-queue:
-			logger.Info("Start cleaning up unused data")
-			ctx, cancel := context.WithTimeout(context.Background(), *intervalF-time.Second)
+		case <-time.After(*intervalF):
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			errCh := make(chan error)
-			go func() {
-				errCh <- runPrune(ctx, logger, cli, *allF, args)
-			}()
-			select {
-			case <-ctx.Done():
-				logger.Warn(ctx.Err().Error())
-			case err := <-errCh:
-				if err != nil {
-					logger.Error("Error occur: %v", err)
-				} else {
-					logger.Info("Finished cleaning")
-				}
+			if err = runPrune(ctx, logger, cli, *allF, args); err != nil {
+				logger.Warnf("Error occur: %v", err)
+			} else {
+				logger.Info("Finished cleaning")
 			}
 		}
 	}
